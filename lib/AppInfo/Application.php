@@ -12,6 +12,7 @@ use OCP\Files\Node;
 use OCP\IDBConnection;
 use OCP\INavigationManager;
 use OCP\IURLGenerator;
+use OCP\AppFramework\IAppContainer;
 
 class Application extends App implements IBootstrap {
 
@@ -50,7 +51,7 @@ class Application extends App implements IBootstrap {
         });
     }
 
-    private function createFSHooks($container): ?FSHooks {
+    private function createFSHooks(IAppContainer $container): ?FSHooks {
         $serverContainer = $container->get('ServerContainer');
         $user = $serverContainer->getUserSession()->getUser();
         if ($user === null) {
@@ -68,17 +69,16 @@ class Application extends App implements IBootstrap {
 
     private function registerNavigation(IBootContext $context): void {
         $container = $context->getAppContainer();
-        $appName = $container->get('AppName');
         
         $container->get(INavigationManager::class)->add(
-            function () use ($container, $appName) {
+            function () use ($container) {
                 $urlGenerator = $container->get(IURLGenerator::class);
                 
                 return [
-                    'id' => $appName,
+                    'id' => 'carnet',
                     'order' => 2,
-                    'href' => $urlGenerator->linkToRoute($appName . '.page.index'),
-                    'icon' => $urlGenerator->imagePath($appName, 'app.svg'),
+                    'href' => $urlGenerator->linkToRoute('carnet.page.index'),
+                    'icon' => $urlGenerator->imagePath('carnet', 'app.svg'),
                     'name' => 'Carnet'
                 ];
             }
