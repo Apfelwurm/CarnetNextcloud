@@ -10,11 +10,8 @@ use OCA\Carnet\Hooks\FSHooks;
 use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\IDBConnection;
-use OCP\EventDispatcher\IEventDispatcher;
-
-if ((@include_once __DIR__ . '/../../vendor/autoload.php')===false) {
-	throw new \Exception('Cannot include autoload. Did you run install dependencies using composer?');
-}
+use OCP\INavigationManager;
+use OCP\IURLGenerator;
 
 class Application extends App implements IBootstrap {
 
@@ -39,43 +36,43 @@ class Application extends App implements IBootstrap {
         $root = $container->get(IRootFolder::class);
         
         $root->listen('\OC\Files', 'postWrite', function (Node $node) use ($container) {
-            $serverContainer = $container->get('ServerContainer');
-            $user = $serverContainer->getUserSession()->getUser();
-            if ($user !== null) {
-                $watcher = new FSHooks(
-                    $serverContainer->getUserFolder(),
-                    $user->getUID(),
-                    $serverContainer->getConfig(),
-                    'carnet',
-                    $container->get(IDBConnection::class)
-                );
+            $watcher = $this->createFSHooks($container);
+            if ($watcher !== null) {
                 $watcher->postWrite($node);
             }
         });
         
         $root->listen('\OC\Files', 'postDelete', function (Node $node) use ($container) {
-            $serverContainer = $container->get('ServerContainer');
-            $user = $serverContainer->getUserSession()->getUser();
-            if ($user !== null) {
-                $watcher = new FSHooks(
-                    $serverContainer->getUserFolder(),
-                    $user->getUID(),
-                    $serverContainer->getConfig(),
-                    'carnet',
-                    $container->get(IDBConnection::class)
-                );
+            $watcher = $this->createFSHooks($container);
+            if ($watcher !== null) {
                 $watcher->postDelete($node);
             }
         });
+    }
+
+    private function createFSHooks($container): ?FSHooks {
+        $serverContainer = $container->get('ServerContainer');
+        $user = $serverContainer->getUserSession()->getUser();
+        if ($user === null) {
+            return null;
+        }
+        
+        return new FSHooks(
+            $serverContainer->getUserFolder(),
+            $user->getUID(),
+            $serverContainer->getConfig(),
+            'carnet',
+            $container->get(IDBConnection::class)
+        );
     }
 
     private function registerNavigation(IBootContext $context): void {
         $container = $context->getAppContainer();
         $appName = $container->get('AppName');
         
-        $container->get('OCP\INavigationManager')->add(
+        $container->get(INavigationManager::class)->add(
             function () use ($container, $appName) {
-                $urlGenerator = $container->get('OCP\IURLGenerator');
+                $urlGenerator = $container->get(IURLGenerator::class);
                 
                 return [
                     'id' => $appName,
